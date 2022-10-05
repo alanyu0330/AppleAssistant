@@ -1,3 +1,4 @@
+// const express = require("express");
 const request = require("request");
 const notifier = require("node-notifier");
 const fs = require("fs");
@@ -8,6 +9,30 @@ const token = `5766612853:AAG87A4OP3fn959DKUHvhIzVLlHD_WVIPVY`;
 const bot = new TelegramBot(token, { polling: true });
 const uid = 407410915;
 
+// Line Bot
+// const line = require("@line/bot-sdk");
+// const lineConfig = {
+//   channelAccessToken: `tK7/8FDEgK4jbip5yhq5gVhjeXxSMiVJBBt1jnDSYMPlaWStdeJvP163mabftYiv7KF98XVKVh4V/EO4KI+wNBVJNwQcCgw1DacxWS00hIKxaT5huTYkO1Kcplr26PwJ0PSgP7quDS4YGPabucZzpQdB04t89/1O/w1cDnyilFU=`,
+//   channelSecret: `b6f5b362c72898868d7c35f987c87cc7`,
+// };
+// const lineBot = new line.Client(lineConfig);
+// const app = express();
+// app.post("/webhook", line.middleware(lineConfig), (req, res) => {
+//   Promise.all(
+//     req.body.events.map((event) => {
+//       if (event.type !== "message" || event.message.type !== "text") {
+//         return Promise.resolve(null);
+//       }
+//       return lineBot.replyMessage(event.replyToken, {
+//         type: "text",
+//         text: event.message.text,
+//       });
+//     })
+//   ).then((result) => res.json(result));
+// });
+// app.listen(3000);
+
+// Apple product config
 const CONF = {
   product: `iPhone 14 Pro 256GB 太空黑色`,
   productUrl: `https://www.apple.com/tw/shop/fulfillment-messages?pl=true&mts.0=regular&mts.1=compact&parts.0=MQ9U3TA/A&searchNearby=true&store=R713`,
@@ -32,12 +57,12 @@ function getInfo() {
       if (info.some((it) => it.available)) {
         // 有現貨
         writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
-        writeLog("有現貨:");
-        writeLog(info);
         bot.sendSticker(
           uid,
           `CAACAgIAAxkBAAEYqqFjO5e6LLUWcfnvROVXE0FRUzRdTAACoxAAAvF3qEh-OxgSw5fVQSoE`
         );
+        writeLog("有現貨:");
+        writeLog(info);
         bot.sendMessage(uid, "!!!!!!!!!有現貨!!!!!!!!!");
         notifier.notify({
           title: `有現貨: ${CONF.product}`,
@@ -71,8 +96,10 @@ function getParts() {
           writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
           writeLog("可供貨的相似機種:");
           info.forEach((it) => {
-            writeLog(it.storeName + ":");
-            writeLog(it.parts);
+            if (it.parts.length) {
+              writeLog(it.storeName + ":");
+              writeLog(it.parts);
+            }
           });
           bot.sendMessage(
             uid,
@@ -116,4 +143,4 @@ bot.onText(/\/hello$/, (msg) => {
 });
 
 getInfo();
-setInterval(() => getInfo(), 4000);
+setInterval(() => getInfo(), 3000);
