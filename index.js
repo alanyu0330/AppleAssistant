@@ -39,6 +39,11 @@ const CONF = {
   partsUrl: `https://www.apple.com/tw/shop/pickup-message-recommendations?mts.0=regular&mts.1=compact&searchNearby=true&store=R713&product=MQ9U3TA/A`,
 };
 
+const SETTINGS = {
+  interval: 2000,
+  pause: false,
+};
+
 let lastPartsStr = "";
 
 function getInfo() {
@@ -138,9 +143,19 @@ bot.onText(/\/log$/, (msg) => {
     console.log("Error:", e.stack);
   }
 });
-bot.onText(/\/hello$/, (msg) => {
-  bot.sendMessage(msg.chat.id, `world`);
+bot.onText(/\/status$/, (msg) => {
+  bot.sendMessage(msg.chat.id, SETTINGS.pause ? "paused" : "working...");
+});
+bot.onText(/\/pause$/, (msg) => {
+  SETTINGS.pause = true;
+  bot.sendMessage(msg.chat.id, SETTINGS.pause ? "paused" : "working...");
+});
+bot.onText(/\/continue$/, (msg) => {
+  SETTINGS.pause = false;
+  bot.sendMessage(msg.chat.id, SETTINGS.pause ? "paused" : "working...");
 });
 
+setInterval(() => {
+  !SETTINGS.pause && getInfo();
+}, SETTINGS.interval);
 getInfo();
-setInterval(() => getInfo(), 3000);
