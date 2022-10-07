@@ -50,35 +50,39 @@ function getInfo() {
   console.log("getInfo......", new Date().toLocaleString());
   request.get({ url: CONF.productUrl }, (err, response, res) => {
     if (response?.statusCode === 200) {
-      const data = JSON.parse(res);
-      const stores = data.body.content.pickupMessage.stores;
-      const info = stores.map((store) => ({
-        storeName: store.storeName,
-        available: Object.values(store.partsAvailability).some(
-          (it) => it.pickupDisplay === "available"
-        ),
-      }));
+      try {
+        const data = JSON.parse(res);
+        const stores = data?.body?.content?.pickupMessage?.stores || [];
+        const info = stores.map((store) => ({
+          storeName: store.storeName,
+          available: Object.values(store.partsAvailability).some(
+            (it) => it.pickupDisplay === "available"
+          ),
+        }));
 
-      if (info.some((it) => it.available)) {
-        // 有現貨
-        writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
-        bot.sendSticker(
-          uid,
-          `CAACAgIAAxkBAAEYqqFjO5e6LLUWcfnvROVXE0FRUzRdTAACoxAAAvF3qEh-OxgSw5fVQSoE`
-        );
-        writeLog("有現貨:");
-        writeLog(info);
-        bot.sendMessage(uid, "!!!!!!!!!有現貨!!!!!!!!!");
-        notifier.notify({
-          title: `有現貨: ${CONF.product}`,
-          open: `https://secure4.store.apple.com/tw/shop/checkout?_s=Fulfillment-init`,
-          message: info
-            .filter((it) => it.available)
-            .map((it) => it.storeName)
-            .join(","),
-        });
+        if (info.some((it) => it.available)) {
+          // 有現貨
+          writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
+          bot.sendSticker(
+            uid,
+            `CAACAgIAAxkBAAEYqqFjO5e6LLUWcfnvROVXE0FRUzRdTAACoxAAAvF3qEh-OxgSw5fVQSoE`
+          );
+          writeLog("有現貨:");
+          writeLog(info);
+          bot.sendMessage(uid, "!!!!!!!!!有現貨!!!!!!!!!");
+          notifier.notify({
+            title: `有現貨: ${CONF.product}`,
+            open: `https://secure4.store.apple.com/tw/shop/checkout?_s=Fulfillment-init`,
+            message: info
+              .filter((it) => it.available)
+              .map((it) => it.storeName)
+              .join(","),
+          });
+        }
+        getParts();
+      } catch (error) {
+        console.error(error);
       }
-      getParts();
     }
   });
 }
@@ -86,35 +90,39 @@ function getInfo() {
 function getParts() {
   request.get({ url: CONF.partsUrl }, (err, response, res) => {
     if (response?.statusCode === 200) {
-      const data = JSON.parse(res);
-      const stores = data.body.PickupMessage.stores;
-      const info = stores.map((store) => ({
-        storeName: store.storeName,
-        parts: Object.values(store.partsAvailability).map(
-          (it) => it.messageTypes.regular.storePickupProductTitle
-        ),
-      }));
+      try {
+        const data = JSON.parse(res);
+        const stores = data?.body?.PickupMessage?.stores || [];
+        const info = stores.map((store) => ({
+          storeName: store.storeName,
+          parts: Object.values(store.partsAvailability).map(
+            (it) => it.messageTypes.regular.storePickupProductTitle
+          ),
+        }));
 
-      if (info.some((it) => Object.values(it.parts).length)) {
-        if (lastPartsStr !== JSON.stringify(info)) {
-          lastPartsStr = JSON.stringify(info);
-          writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
-          writeLog("可供貨的相似機種:");
-          info.forEach((it) => {
-            if (it.parts.length) {
-              writeLog(it.storeName + ":");
-              writeLog(it.parts);
-            }
-          });
-          bot.sendMessage(
-            uid,
-            "可供貨的相似機種:\n" +
-              info
-                .map((it) => it.parts)
-                .flat()
-                .join("\n")
-          );
+        if (info.some((it) => Object.values(it.parts).length)) {
+          if (lastPartsStr !== JSON.stringify(info)) {
+            lastPartsStr = JSON.stringify(info);
+            writeLog(`==========  ${new Date().toLocaleString()}  ==========`);
+            writeLog("可供貨的相似機種:");
+            info.forEach((it) => {
+              if (it.parts.length) {
+                writeLog(it.storeName + ":");
+                writeLog(it.parts);
+              }
+            });
+            bot.sendMessage(
+              uid,
+              "可供貨的相似機種:\n" +
+                info
+                  .map((it) => it.parts)
+                  .flat()
+                  .join("\n")
+            );
+          }
         }
+      } catch (error) {
+        console.error(error);
       }
     }
   });
