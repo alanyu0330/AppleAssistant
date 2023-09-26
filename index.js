@@ -22,14 +22,15 @@ bot.onText(/\/log$/, (msg) => {
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
     const data = fs.readFileSync("log.txt", "utf8");
-    bot.sendMessage(msg.chat.id, data || "empty");
+    bot.sendMessage(msg.chat.id, data || "log is empty");
   } catch (e) {
+    bot.sendMessage(msg.chat.id, "無法讀取log，可能是空的");
     console.log("Error:", e.stack);
   }
 });
 
 // 清除log (admin only)
-bot.onText(/\/clearLog$/, (msg) => {
+bot.onText(/\/clearlog$/, (msg) => {
   if (msg.from.id !== admin_uid)
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
@@ -42,7 +43,7 @@ bot.onText(/\/clearLog$/, (msg) => {
 });
 
 // 移除所有user (admin only)
-bot.onText(/\/removeUsers$/, (msg) => {
+bot.onText(/\/removeusers$/, (msg) => {
   if (msg.from.id !== admin_uid)
     return bot.sendMessage(msg.chat.id, "no permission");
   userMap.forEach((user) => {
