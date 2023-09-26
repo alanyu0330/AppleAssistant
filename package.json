@@ -5,14 +5,13 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "node index.js"
   },
   "author": "alanYu",
   "license": "ISC",
   "dependencies": {
     "@line/bot-sdk": "^7.5.2",
     "express": "^4.18.1",
-    "node-notifier": "^10.0.1",
     "node-telegram-bot-api": "^0.59.0",
     "request": "^2.88.2"
   }

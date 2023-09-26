@@ -1,82 +1,24 @@
 import fs from "fs";
 import * as api from "./api.js";
-import notifier from "node-notifier";
 import User, { userStatus } from "./User.js";
 import modelList from "./modelList.js";
 
 /* TG Bot*/
 import TelegramBot from "node-telegram-bot-api";
-const token = `5766612853:AAG87A4OP3fn959DKUHvhIzVLlHD_WVIPVY`;
-const bot = new TelegramBot(token, { polling: true });
-const adminUID = 407410915; // admin uid
+import config from "./config.js";
+const admin_uid = config.admin_uid;
+const bot_token = config.bot_token;
+const bot = new TelegramBot(bot_token, { polling: true });
+const userMap = new Map(); /*<number, User>*/ // 存储用户状态的对象，用于跟踪用户当前的操作
 let mainTimer = null; // 主計時器
-// 存储用户状态的对象，用于跟踪用户当前的操作
-const userMap = new Map(); /*<number, User>*/
 
 // init
-writeLog(`==== server start ... ${new Date().toLocaleString()}  ====`);
-bot.sendMessage(adminUID, "server start...");
-
-mainTimer = setInterval(() => {
-  userMap.forEach((user) => {
-    if (!user.isPaused && user.targetDeviceModel !== null) {
-      api
-        .getInfo(user)
-        .then((info) => {
-          if (info.some((it) => it.available)) {
-            // 有現貨
-            bot.sendSticker(
-              user.chatId,
-              `CAACAgIAAxkBAAEYqqFjO5e6LLUWcfnvROVXE0FRUzRdTAACoxAAAvF3qEh-OxgSw5fVQSoE`
-            );
-            bot.sendMessage(
-              user.chatId,
-              `有現貨!!!\n${user.targetDeviceModel.text}\n取消訂閱: /unsubscribe`
-            );
-
-            writeLog("==== 有現貨!!! ====");
-            writeLog(
-              `${user.info.username}(${user.info.id}) | ${user.targetDeviceModel.text}`
-            );
-
-            // 是否順便查詢相似機種
-            if (user.allowFindParts) {
-              api
-                .getParts(user)
-                .then((info) => {
-                  if (info.some((it) => Object.values(it.parts).length)) {
-                    if (user.lastPartsStr !== JSON.stringify(info)) {
-                      user.lastPartsStr = JSON.stringify(info);
-                      writeLog(`可供貨的相似機種:\n`);
-                      info.forEach((it) => {
-                        if (it.parts.length) {
-                          writeLog(it.storeName + ":");
-                          writeLog(it.parts);
-                        }
-                      });
-                      bot.sendMessage(
-                        user.chatId,
-                        "可供貨的相似機種:\n" +
-                          info
-                            .map((it) => it.parts)
-                            .flat()
-                            .join("\n")
-                      );
-                    }
-                  }
-                })
-                .catch((err) => {});
-            }
-          }
-        })
-        .catch((err) => {});
-    }
-  });
-}, 3000);
+writeLog(`==== server start... ${new Date().toLocaleString()}  ====`);
+bot.sendMessage(admin_uid, "server start...");
 
 // 查看log (admin only)
 bot.onText(/\/log$/, (msg) => {
-  if (msg.from.id !== adminUID)
+  if (msg.from.id !== admin_uid)
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
     const data = fs.readFileSync("log.txt", "utf8");
@@ -88,7 +30,7 @@ bot.onText(/\/log$/, (msg) => {
 
 // 清除log (admin only)
 bot.onText(/\/clearLog$/, (msg) => {
-  if (msg.from.id !== adminUID)
+  if (msg.from.id !== admin_uid)
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
     fs.unlink("log.txt", () => {
@@ -101,7 +43,7 @@ bot.onText(/\/clearLog$/, (msg) => {
 
 // 移除所有user (admin only)
 bot.onText(/\/removeUsers$/, (msg) => {
-  if (msg.from.id !== adminUID)
+  if (msg.from.id !== admin_uid)
     return bot.sendMessage(msg.chat.id, "no permission");
   userMap.forEach((user) => {
     user.unsubscribe();
@@ -222,6 +164,65 @@ bot.on("callback_query", (callbackQuery) => {
     }
   }
 });
+
+// 開始主循環
+mainTimer = setInterval(() => {
+  userMap.forEach((user) => {
+    if (!user.isPaused && user.targetDeviceModel !== null) {
+      api
+        .getInfo(user)
+        .then((info) => {
+          if (info.some((it) => it.available)) {
+            // 有現貨
+            bot.sendSticker(
+              user.chatId,
+              `CAACAgIAAxkBAAEYqqFjO5e6LLUWcfnvROVXE0FRUzRdTAACoxAAAvF3qEh-OxgSw5fVQSoE`
+            );
+            bot.sendMessage(
+              user.chatId,
+              `有現貨!!!\n${user.targetDeviceModel.text}\n
+               取消訂閱: /unsubscribe`
+            );
+
+            writeLog("==== 有現貨!!! ====");
+            writeLog(
+              `${user.info.username}(${user.info.id}) | ${user.targetDeviceModel.text}`
+            );
+
+            // 是否順便查詢相似機種
+            if (user.allowFindParts) {
+              api
+                .getParts(user)
+                .then((info) => {
+                  if (info.some((it) => Object.values(it.parts).length)) {
+                    if (user.lastPartsStr !== JSON.stringify(info)) {
+                      user.lastPartsStr = JSON.stringify(info);
+                      writeLog(`可供貨的相似機種:\n`);
+                      info.forEach((it) => {
+                        if (it.parts.length) {
+                          writeLog(it.storeName + ":");
+                          writeLog(it.parts);
+                        }
+                      });
+                      bot.sendMessage(
+                        user.chatId,
+                        "可供貨的相似機種:\n" +
+                          info
+                            .map((it) => it.parts)
+                            .flat()
+                            .join("\n")
+                      );
+                    }
+                  }
+                })
+                .catch((err) => {});
+            }
+          }
+        })
+        .catch((err) => {});
+    }
+  });
+}, config.interval);
 
 function getUserByChatId(chatId) {
   return userMap.get(chatId);
