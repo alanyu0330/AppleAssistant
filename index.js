@@ -1,6 +1,7 @@
 import fs from "fs";
 import * as api from "./api.js";
 import User, { userStatus } from "./User.js";
+import commands from "./commands.js";
 import modelList from "./modelList.js";
 
 /* TG Bot*/
@@ -14,7 +15,7 @@ let mainTimer = null; // 主計時器
 
 // init
 writeLog(`==== server start... ${new Date().toLocaleString()}  ====`);
-bot.sendMessage(admin_uid, "server start...");
+sendMsgToAdmin("server start...");
 
 // 查看log (admin only)
 bot.onText(/\/log$/, (msg) => {
@@ -22,9 +23,9 @@ bot.onText(/\/log$/, (msg) => {
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
     const data = fs.readFileSync("log.txt", "utf8");
-    bot.sendMessage(msg.chat.id, data || "log is empty");
+    sendMsgToAdmin(data || "log is empty");
   } catch (e) {
-    bot.sendMessage(msg.chat.id, "無法讀取log，可能是空的");
+    sendMsgToAdmin("無法讀取log，可能是空的");
     console.log("Error:", e.stack);
   }
 });
@@ -35,10 +36,11 @@ bot.onText(/\/clearlog$/, (msg) => {
     return bot.sendMessage(msg.chat.id, "no permission");
   try {
     fs.unlink("log.txt", () => {
-      bot.sendMessage(msg.chat.id, "已清除log");
+      sendMsgToAdmin("已清除log");
     });
   } catch (e) {
     console.log("Error:", e.stack);
+    sendMsgToAdmin("錯誤! 請查看/log");
   }
 });
 
@@ -54,8 +56,20 @@ bot.onText(/\/removeusers$/, (msg) => {
     );
   });
   userMap.clear();
-  bot.sendMessage(msg.chat.id, "已移除所有用戶");
+  sendMsgToAdmin("已移除所有用戶");
   writeLog("==== remove all users ====");
+});
+
+// 列出所有user (admin only)
+bot.onText(/\/userlist$/, (msg) => {
+  if (msg.from.id !== admin_uid)
+    return bot.sendMessage(msg.chat.id, "no permission");
+
+  const str = Array.from(userMap.values())
+    .map((user, i) => i + 1 + ". " + user.userInfoAsString)
+    .join("\n");
+  sendMsgToAdmin(str || "no user.");
+  writeLog("==== check all users ====");
 });
 
 // 開始訂閱機型現貨狀態
@@ -86,9 +100,11 @@ bot.onText(/\/unsubscribe$/, (msg) => {
   const chatId = msg.chat.id;
   let user = getUserByChatId(chatId);
   if (user) {
+    const infoStr = user.userInfoAsString;
     user.unsubscribe();
     userMap.delete(chatId);
-    bot.sendMessage(chatId, "已取消訂閱");
+    bot.sendMessage(chatId, "您已取消訂閱");
+    sendMsgToAdmin(`[user取消訂閱] ${infoStr})`);
     writeLog("==== user unsubscribe ====");
     writeLog(`${user.info.username}(${user.info.id})`);
   } else {
@@ -117,7 +133,7 @@ bot.onText(/\/pause$/, (msg) => {
   let user = getUserByChatId(msg.chat.id);
   if (user) {
     user.isPaused = true;
-    bot.sendMessage(msg.chat.id, "已暫停監聽...");
+    bot.sendMessage(msg.chat.id, "已暫停監聽... /status 查看狀態");
     writeLog("==== user pause ====");
     writeLog(`${user.info.username}(${user.info.id})`);
   }
@@ -128,7 +144,7 @@ bot.onText(/\/continue$/, (msg) => {
   let user = getUserByChatId(msg.chat.id);
   if (user) {
     user.isPaused = false;
-    bot.sendMessage(msg.chat.id, "已繼續監聽...");
+    bot.sendMessage(msg.chat.id, "已繼續監聽... /status 查看狀態");
     writeLog("==== user continue ====");
     writeLog(`${user.info.username}(${user.info.id})`);
   }
@@ -155,12 +171,9 @@ bot.on("callback_query", (callbackQuery) => {
           text: "訂閱成功",
           show_alert: true,
         });
-
+        sendMsgToAdmin(`[user訂閱] ${user.userInfoAsString})`);
         writeLog("==== user subscribe ====");
-        writeLog(
-          `${user.info.username}(${user.info.id}) | ${user.targetDeviceModel.text}(${user.targetDeviceModel.model})`
-        );
-
+        writeLog(user.userInfoAsString);
         break;
     }
   }
@@ -181,14 +194,11 @@ mainTimer = setInterval(() => {
             );
             bot.sendMessage(
               user.chatId,
-              `有現貨!!!\n${user.targetDeviceModel.text}\n
-               取消訂閱: /unsubscribe`
+              `有現貨!!!\n${user.targetDeviceModel.text}\n取消訂閱: /unsubscribe`
             );
 
             writeLog("==== 有現貨!!! ====");
-            writeLog(
-              `${user.info.username}(${user.info.id}) | ${user.targetDeviceModel.text}`
-            );
+            writeLog(user.userInfoAsString);
 
             // 是否順便查詢相似機種
             if (user.allowFindParts) {
@@ -224,6 +234,13 @@ mainTimer = setInterval(() => {
     }
   });
 }, config.interval);
+
+function sendMsgToAdmin(msg) {
+  const fullMsg = `\`\`\`\n[admin]\n${msg}\`\`\``;
+  bot.sendMessage(admin_uid, fullMsg, {
+    parse_mode: "Markdown",
+  });
+}
 
 function getUserByChatId(chatId) {
   return userMap.get(chatId);

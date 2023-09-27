@@ -10,7 +10,7 @@ export default class User {
     this.chatId = userInfo.id;
     this.status = userStatus.none;
     this.isPaused = true;
-    this.targetDeviceModel = null;
+    this.targetDeviceModel = null; // { text: "iPhone 15 Pro 白色鈦金屬 128GB", model: "MTUW3ZP/A" }
     this.lastPartsStr = "";
     this.allowFindParts = false;
   }
@@ -28,5 +28,13 @@ export default class User {
       this.status === userStatus.asking_for_target_device_model &&
       !this.isPaused
     );
+  }
+
+  get userInfoAsString() {
+    const basicInfo = `${this.info.username} (${this.info.id})`;
+    const subscribeInfo = this.targetDeviceModel
+      ? `${this.targetDeviceModel.text} (${this.targetDeviceModel.model})`
+      : "未訂閱";
+    return [basicInfo, subscribeInfo].join(" | ");
   }
 }
