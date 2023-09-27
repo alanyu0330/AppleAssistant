@@ -16,18 +16,19 @@ npm install
 1. 找官方 BOT 爸爸申請一個 BOT: https://t.me/BotFather
 2. 到 config.js 更換 `bot_token` 為你自己的 TG Bot API Token
 3. 到 config.js 更換 `admin_uid` 為你自己的 TG ID (才能收發管理員指令)
-4. 找 BOT 爸爸 輸入`/setcommands` 設定以下指令集:
+4. 找 BOT 爸爸 輸入`/setcommands` 設定以下指令集 (方便TG使用):
 
-   ```
-   subscribe - 訂閱機型現貨狀態
-   unsubscribe - 取消訂閱
-   status - 查看狀態
-   pause - 暫停
-   continue - 繼續
-   log - 查看log
-   clearlog - 清除log
-   removeusers - 移除所有用戶
-   ```
+```
+subscribe - 訂閱一個機型現貨
+unsubscribe - 取消訂閱
+status - 查看狀態
+pause - 暫停
+continue - 繼續
+log - 查看log
+clearlog - 清除log
+userlist - 查看用戶列表
+removeusers - 移除所有用戶
+```
 
 5. 完成
 
