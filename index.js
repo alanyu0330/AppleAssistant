@@ -1,6 +1,10 @@
 import fs from "fs";
 import * as api from "./api.js";
-import User, { userStatus } from "./User.js";
+import User, {
+  cacheUserMapToJson,
+  restoreUserMapFromCache,
+  userStatus,
+} from "./User.js";
 import commands from "./commands.js";
 import modelList from "./modelList.js";
 
@@ -9,7 +13,7 @@ import TelegramBot from "node-telegram-bot-api";
 import config from "./config.js";
 const admin_uid = config.admin_uid;
 const bot = new TelegramBot(config.bot_token, { polling: true });
-const userMap = new Map(); /*<number, User>*/ // 存储用户状态的对象，用于跟踪用户当前的操作
+const userMap = restoreUserMapFromCache(new Map()); /*<number, User>*/ // 存储用户状态的对象，用于跟踪用户当前的操作
 let mainTimer = null; // 主計時器
 
 init();
@@ -111,6 +115,7 @@ function init() {
       const infoStr = user.userInfoAsString;
       user.unsubscribe();
       userMap.delete(chatId);
+      cacheUserMapToJson(userMap);
       bot.sendMessage(chatId, "您已取消訂閱");
       sendMsgToAdmin(`[user取消訂閱] ${infoStr}`);
       writeLog("==== user unsubscribe ====");
@@ -127,8 +132,6 @@ function init() {
       let str = "未訂閱";
       if (user.isAsking) {
         str = `訂閱中...    ${user.targetDeviceModel.text}`;
-      } else if (user.isPaused) {
-        str = `已暫停...    ${user.targetDeviceModel.text}`;
       }
       bot.sendMessage(msg.chat.id, "當前狀態: " + str);
     } else {
@@ -136,28 +139,6 @@ function init() {
         msg.chat.id,
         "您尚未訂閱，請先訂閱機型，指令: /subscribe"
       );
-    }
-  });
-
-  // 暫停訂閱
-  bot.onText(/\/pause$/, (msg) => {
-    let user = getUserByChatId(msg.chat.id);
-    if (user) {
-      user.isPaused = true;
-      bot.sendMessage(msg.chat.id, "已暫停監聽... /status 查看狀態");
-      writeLog("==== user pause ====");
-      writeLog(`${user.info.username}(${user.info.id})`);
-    }
-  });
-
-  // 繼續訂閱
-  bot.onText(/\/continue$/, (msg) => {
-    let user = getUserByChatId(msg.chat.id);
-    if (user) {
-      user.isPaused = false;
-      bot.sendMessage(msg.chat.id, "已繼續監聽... /status 查看狀態");
-      writeLog("==== user continue ====");
-      writeLog(`${user.info.username}(${user.info.id})`);
     }
   });
 
@@ -175,8 +156,9 @@ function init() {
             `您選擇的機型是：${user.targetDeviceModel.text} (${callbackQuery.data})`
           );
           user.status = userStatus.asking_for_target_device_model;
-          user.isPaused = false;
           user.allowFindParts = true;
+          cacheUserMapToJson(userMap);
+
           bot.sendMessage(chatId, `已開始訂閱現貨，有貨時會收到通知`);
           bot.deleteMessage(chatId, callbackQuery.message.message_id);
           bot.answerCallbackQuery(callbackQuery.id, {
@@ -199,7 +181,7 @@ function init() {
   // 開始主循環
   mainTimer = setInterval(() => {
     userMap.forEach((user) => {
-      if (!user.isPaused && user.targetDeviceModel !== null) {
+      if (user.targetDeviceModel !== null) {
         api
           .getInfo(user)
           .then((info) => {
